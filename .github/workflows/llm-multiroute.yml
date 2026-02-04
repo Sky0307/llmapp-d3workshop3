@@ -1,0 +1,34 @@
+name: LLM Multiroute Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: ./llm-multiroute
+        run: pip install -r requirements.txt flake8
+
+      - name: Lint with flake8
+        working-directory: ./llm-multiroute
+        run: |
+          flake8 app/ --max-line-length 120 --count --show-source --statistics
+
+      - name: Run tests
+        working-directory: ./llm-multiroute
+        run: pytest tests/ -v
