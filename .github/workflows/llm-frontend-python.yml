@@ -1,0 +1,32 @@
+name: LLM Frontend Python
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: ./llm-frontend-python
+        run: pip install -r requirements.txt flake8
+
+      - name: Lint with flake8
+        working-directory: ./llm-frontend-python
+        run: flake8 app.py config.py --max-line-length 120 --count --show-source --statistics
+
+      - name: Build Docker image
+        run: docker build -t llm-frontend ./llm-frontend-python
