@@ -1,0 +1,73 @@
+name: DeepEval Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deepeval:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        run: docker build -t llm-backend ./llm-multiroute
+
+      - name: Start backend container
+        run: |
+          docker run -d \
+            --name llm-backend \
+            -p 8080:8080 \
+            -e OLLAMA_API_KEY=${{ secrets.OLLAMA_API_KEY }} \
+            -e OLLAMA_BASE_URL=${{ secrets.OLLAMA_BASE_URL || 'https://ollama.com' }} \
+            -e OLLAMA_MODEL_CLASSIFY=gemma3:4b \
+            -e OLLAMA_MODEL_SENTIMENT=ministral-3:3b \
+            -e OLLAMA_MODEL_SUMMARIZE=ministral-3:8b \
+            -e OLLAMA_MODEL_INTENT=gemma3:12b \
+            llm-backend
+
+      - name: Wait for backend to be ready
+        run: |
+          echo "Waiting for backend to start..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:8080/swagger-ui.html > /dev/null 2>&1; then
+              echo "Backend is ready!"
+              exit 0
+            fi
+            echo "Attempt $i/30 - waiting..."
+            sleep 2
+          done
+          echo "Backend failed to start"
+          docker logs llm-backend
+          exit 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        working-directory: ./deepeval-tests
+        run: pip install -r requirements.txt
+
+      - name: Run deepeval tests
+        working-directory: ./deepeval-tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: deepeval test run test_classify.py test_sentiment.py test_summarize.py test_intent.py
+
+      - name: Print backend logs on failure
+        if: failure()
+        run: docker logs llm-backend
+
+      - name: Stop backend container
+        if: always()
+        run: docker stop llm-backend && docker rm llm-backend
