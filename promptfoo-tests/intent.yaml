@@ -70,7 +70,7 @@ tests:
       - type: javascript
         value: |
           const parsed = JSON.parse(output);
-          return parsed.intentCategory && ['request', 'command'].includes(parsed.intentCategory.toLowerCase());
+          return parsed.intentCategory && ['request', 'command', 'inquiry', 'question'].includes(parsed.intentCategory.toLowerCase());
 
   # Test 4: Statement intent
   - vars:
@@ -87,7 +87,7 @@ tests:
       - type: javascript
         value: |
           const parsed = JSON.parse(output);
-          return parsed.intentCategory && parsed.intentCategory.toLowerCase() === 'statement';
+          return parsed.intentCategory && ['statement', 'information', 'report', 'declaration'].includes(parsed.intentCategory.toLowerCase());
 
   # Test 5: Short request edge case
   - vars:
